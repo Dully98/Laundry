@@ -462,21 +462,50 @@ async function handleAdminStats() {
   const activeSubscriptions = await db.collection('orders').countDocuments({ type: 'subscription', paymentStatus: 'paid' });
   const totalRevenue = await db.collection('orders').aggregate([{ $match: { paymentStatus: 'paid' } }, { $group: { _id: null, total: { $sum: '$total' } } }]).toArray();
   const oneOffOrders = await db.collection('orders').countDocuments({ type: 'one-off' });
+  const subOrders = await db.collection('orders').countDocuments({ type: 'subscription' });
   const openComplaints = await db.collection('complaints').countDocuments({ status: 'open' });
   const recentOrders = await db.collection('orders').find().sort({ createdAt: -1 }).limit(10).toArray();
   const totalUsers = await db.collection('users').countDocuments();
 
   const monthlyRevenue = await db.collection('orders').aggregate([
-    { $match: { paymentStatus: 'paid' } },
     { $group: { _id: { $substr: ['$createdAt', 0, 7] }, revenue: { $sum: '$total' }, count: { $sum: 1 } } },
-    { $sort: { _id: -1 } },
+    { $sort: { _id: 1 } },
     { $limit: 12 }
   ]).toArray();
 
+  // Status breakdown for bar chart
+  const statusBreakdown = await db.collection('orders').aggregate([
+    { $group: { _id: '$status', count: { $sum: 1 } } }
+  ]).toArray();
+
+  // Plan distribution for pie chart
+  const planDistribution = await db.collection('orders').aggregate([
+    { $group: { _id: '$planName', count: { $sum: 1 }, revenue: { $sum: '$total' } } }
+  ]).toArray();
+
+  // Suburb distribution
+  const suburbStats = await db.collection('orders').aggregate([
+    { $group: { _id: '$suburb', count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+    { $limit: 10 }
+  ]).toArray();
+
+  // Add-on revenue
+  const addOnRevenue = await db.collection('orders').aggregate([
+    { $unwind: { path: '$addons', preserveNullAndEmptyArrays: false } },
+    { $group: { _id: '$addons.name', count: { $sum: '$addons.quantity' }, revenue: { $sum: '$addons.subtotal' } } },
+    { $sort: { revenue: -1 } }
+  ]).toArray();
+
+  // Active promo codes
+  const activePromos = await db.collection('promo_codes').countDocuments({ active: true });
+  const totalDrivers = await db.collection('drivers').countDocuments({ status: 'active' });
+
   return json({
-    totalOrders, activeSubscriptions, oneOffOrders, openComplaints, totalUsers,
+    totalOrders, activeSubscriptions, oneOffOrders, subOrders, openComplaints, totalUsers,
     totalRevenue: totalRevenue[0]?.total || 0,
-    recentOrders, monthlyRevenue,
+    recentOrders, monthlyRevenue, statusBreakdown, planDistribution, suburbStats, addOnRevenue,
+    activePromos, totalDrivers,
   });
 }
 
