@@ -101,3 +101,229 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: "Premium Laundry Subscription & On-Demand Platform - Fresh Fold. Landing page, booking system, QR tracking, customer dashboard, admin panel, complaint system, Stripe checkout."
+
+backend:
+  - task: "Health check API"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "GET /api/health returns ok"
+
+  - task: "User registration API"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "POST /api/auth/register creates user and returns token"
+
+  - task: "User login API"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "POST /api/auth/login returns token"
+
+  - task: "Get plans API"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "GET /api/plans returns 3 subscription plans"
+
+  - task: "Create booking API"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "POST /api/bookings creates order with QR code, tracking ID, and calculates pricing with add-ons and GST"
+
+  - task: "QR Tracking API"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "GET /api/tracking/{trackingId} returns order status and history"
+
+  - task: "Order status update API (admin)"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "PUT /api/bookings/{id} updates status with history"
+
+  - task: "Subscription management API"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "POST/GET/PUT /api/subscriptions - subscribe, get, pause, resume, cancel all working"
+
+  - task: "Complaint system API"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "POST/GET /api/complaints - create and list complaints working"
+
+  - task: "Admin statistics API"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "GET /api/admin/stats returns totalOrders, revenue, users, complaints"
+
+  - task: "Checkout session API"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "POST /api/checkout/session - Stripe checkout session creation. Gracefully handles Stripe errors and still creates orders"
+
+  - task: "Suburb validation"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Booking API validates suburb against service area list"
+
+  - task: "Make admin API"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "POST /api/auth/make-admin promotes user to admin role"
+
+frontend:
+  - task: "Landing page with 10 sections"
+    implemented: true
+    working: true
+    file: "app/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Hero, How It Works, Pricing, Value Props, Add-ons, Testimonials, Service Areas, Corporate, FAQ, CTA, Footer all rendering"
+
+  - task: "Booking flow with add-ons sidebar"
+    implemented: true
+    working: true
+    file: "app/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "2-step booking flow with plan selection, scheduling, add-ons, and sticky pricing sidebar"
+
+  - task: "Customer dashboard"
+    implemented: true
+    working: true
+    file: "app/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+
+  - task: "Admin panel"
+    implemented: true
+    working: true
+    file: "app/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "Health check API"
+    - "User registration API"
+    - "User login API"
+    - "Create booking API"
+    - "QR Tracking API"
+    - "Subscription management API"
+    - "Complaint system API"
+    - "Admin statistics API"
+    - "Checkout session API"
+    - "Suburb validation"
+  stuck_tasks: []
+  test_all: true
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: "Built the complete Fresh Fold laundry platform MVP. Backend has all API routes in /app/app/api/[[...path]]/route.js. Frontend has all views in /app/app/page.js. Auth uses token-based sessions stored in MongoDB. Stripe integration uses STRIPE_API_KEY from .env (may fail gracefully with test key). QR codes generated server-side using qrcode npm package. All IDs use UUID. To make a user admin: POST /api/auth/make-admin with {email, secret:'freshfold-admin-2025'}. Please test all backend endpoints."
