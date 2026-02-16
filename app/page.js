@@ -893,7 +893,42 @@ function DashboardView({ user, setView }) {
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm text-slate-600">
                       <span>{o.planName}</span><span>{o.suburb}</span><span>{o.pickupDate}</span><span className="font-medium">${o.total?.toFixed(2)}</span>
                     </div>
-                    {o.qrCode && <div className="mt-3"><img src={o.qrCode} alt="QR" className="w-20 h-20 rounded-lg border" /></div>}
+                    <div className="flex items-center gap-2 mt-3">
+                      {o.qrCode && <img src={o.qrCode} alt="QR" className="w-16 h-16 rounded-lg border" />}
+                      <Button size="sm" variant="outline" className="text-xs gap-1" onClick={async () => {
+                        try {
+                          const { invoice } = await api(`invoices/${o.id}`);
+                          const { jsPDF } = await import('jspdf');
+                          const doc = new jsPDF();
+                          doc.setFontSize(22); doc.setTextColor(59, 130, 246); doc.text('Fresh Fold', 20, 25);
+                          doc.setFontSize(10); doc.setTextColor(100); doc.text('Premium Laundry Service | Geelong, VIC 3220', 20, 32);
+                          doc.setDrawColor(200); doc.line(20, 36, 190, 36);
+                          doc.setFontSize(16); doc.setTextColor(30); doc.text(`Invoice ${invoice.invoiceNumber}`, 20, 48);
+                          doc.setFontSize(10); doc.setTextColor(100);
+                          doc.text(`Date: ${new Date(invoice.date).toLocaleDateString()}`, 20, 56);
+                          doc.text(`Customer: ${invoice.customer.name}`, 20, 62);
+                          doc.text(`Email: ${invoice.customer.email}`, 20, 68);
+                          doc.text(`Suburb: ${invoice.customer.suburb}`, 20, 74);
+                          doc.text(`Tracking: ${invoice.order.trackingId}`, 130, 56);
+                          doc.text(`Service: ${invoice.order.planName}`, 130, 62);
+                          doc.text(`Pickup: ${invoice.order.pickupDate}`, 130, 68);
+                          let y = 90;
+                          doc.setFillColor(240, 244, 248); doc.rect(20, y - 6, 170, 8, 'F');
+                          doc.setTextColor(60); doc.setFontSize(9);
+                          doc.text('Description', 22, y); doc.text('Qty', 110, y); doc.text('Price', 130, y); doc.text('Total', 160, y);
+                          y += 10;
+                          invoice.lineItems.forEach(item => { doc.text(item.description, 22, y); doc.text(String(item.quantity), 112, y); doc.text(`$${item.unitPrice.toFixed(2)}`, 130, y); doc.text(`$${item.total.toFixed(2)}`, 160, y); y += 7; });
+                          y += 5; doc.line(20, y, 190, y); y += 8;
+                          if (invoice.discount > 0) { doc.text(`Discount (${invoice.promoCode}):`, 120, y); doc.text(`-$${invoice.discount.toFixed(2)}`, 160, y); y += 7; }
+                          doc.text('Subtotal:', 130, y); doc.text(`$${invoice.subtotal.toFixed(2)}`, 160, y); y += 7;
+                          doc.text('GST (10%):', 130, y); doc.text(`$${invoice.gst.toFixed(2)}`, 160, y); y += 7;
+                          doc.setFontSize(12); doc.setTextColor(30); doc.text('Total:', 130, y); doc.text(`$${invoice.total.toFixed(2)} AUD`, 155, y);
+                          y += 15; doc.setFontSize(8); doc.setTextColor(150); doc.text('Fresh Fold Pty Ltd | ABN: 12 345 678 901 | hello@freshfold.com.au', 20, y);
+                          doc.save(`FreshFold-${invoice.invoiceNumber}.pdf`);
+                          toast.success('Invoice downloaded!');
+                        } catch (e) { toast.error('Failed to generate invoice'); }
+                      }}><Download className="w-3 h-3" /> Invoice</Button>
+                    </div>
                   </div>
                 ))}
               </div>}
