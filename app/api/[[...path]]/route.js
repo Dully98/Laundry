@@ -103,8 +103,9 @@ async function handleRegister(request) {
   const user = {
     id: uuidv4(), name, email: email.toLowerCase(), password: hashPw(password),
     phone: phone || '', suburb: suburb || '', role: 'customer',
-    subscription: null, createdAt: new Date().toISOString(),
+    subscription: null, referralCode: null, createdAt: new Date().toISOString(),
   };
+  user.referralCode = 'REF-' + user.id.substring(0, 8).toUpperCase();
   await db.collection('users').insertOne(user);
   const token = uuidv4();
   await db.collection('sessions').insertOne({ token, userId: user.id, active: true, createdAt: new Date().toISOString() });
