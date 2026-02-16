@@ -147,12 +147,21 @@ async function handleGetSuburbs() {
 async function handleCreateBooking(request) {
   const user = await getUser(request);
   const body = await request.json();
-  const { type, planId, suburb, pickupDate, pickupTimeSlot, deliveryPreference, items, instructions, addons, weightKg, guestEmail, guestName, guestPhone } = body;
+  const { type, planId, suburb, pickupDate, pickupTimeSlot, deliveryPreference, items, instructions, addons, weightKg, guestEmail, guestName, guestPhone, promoCode } = body;
 
   if (!suburb || !SERVICE_SUBURBS.map(s => s.toLowerCase()).includes(suburb.toLowerCase())) {
     return json({ error: 'Service not available in this suburb. We serve Greater Geelong, Bellarine Peninsula, and Surf Coast areas.' }, 400);
   }
   if (!pickupDate || !pickupTimeSlot) return json({ error: 'Pickup date and time slot required' }, 400);
+
+  // Capacity check
+  const db = await getDb();
+  const capacitySettings = await db.collection('capacity_settings').findOne({ suburb: { $regex: new RegExp(`^${suburb}$`, 'i') }, active: true });
+  const maxPerSlot = capacitySettings?.maxPerSlot || 5;
+  const slotBookings = await db.collection('orders').countDocuments({ pickupDate, pickupTimeSlot, suburb: { $regex: new RegExp(`^${suburb}$`, 'i') } });
+  if (slotBookings >= maxPerSlot) {
+    return json({ error: `This time slot is fully booked for ${suburb} on ${pickupDate}. Please choose another slot.` }, 400);
+  }
 
   let baseCost = 0;
   let plan = null;
@@ -178,7 +187,23 @@ async function handleCreateBooking(request) {
     }
   }
 
-  const subtotal = parseFloat((baseCost + addonsTotal).toFixed(2));
+  let subtotal = parseFloat((baseCost + addonsTotal).toFixed(2));
+  
+  // Promo code discount
+  let discount = 0;
+  let appliedPromo = null;
+  if (promoCode) {
+    const promo = await db.collection('promo_codes').findOne({ code: promoCode.toUpperCase(), active: true });
+    if (promo) {
+      if ((!promo.expiryDate || new Date(promo.expiryDate) >= new Date()) && (!promo.maxUses || promo.currentUses < promo.maxUses)) {
+        discount = promo.type === 'percentage' ? parseFloat((subtotal * promo.value / 100).toFixed(2)) : Math.min(promo.value, subtotal);
+        appliedPromo = promo.code;
+        await db.collection('promo_codes').updateOne({ id: promo.id }, { $inc: { currentUses: 1 } });
+      }
+    }
+  }
+
+  subtotal = parseFloat((subtotal - discount).toFixed(2));
   const gst = parseFloat((subtotal * GST_RATE).toFixed(2));
   const total = parseFloat((subtotal + gst).toFixed(2));
 
@@ -190,41 +215,38 @@ async function handleCreateBooking(request) {
     qrCode = await QRCode.toDataURL(trackingUrl, { width: 300, margin: 2 });
   } catch(e) { console.error('QR generation failed', e); }
 
+  // Auto-assign driver based on suburb zone
+  let driverId = null, driverName = null;
+  const availableDriver = await db.collection('drivers').findOne({ status: 'active', assignedZones: { $regex: new RegExp(suburb, 'i') } });
+  if (availableDriver) { driverId = availableDriver.id; driverName = availableDriver.name; await db.collection('drivers').updateOne({ id: availableDriver.id }, { $inc: { currentOrders: 1 } }); }
+
   const order = {
-    id: uuidv4(),
-    trackingId,
+    id: uuidv4(), trackingId,
     userId: user?.id || null,
-    guestEmail: guestEmail || null,
-    guestName: guestName || null,
-    guestPhone: guestPhone || null,
-    type: type || 'one-off',
-    planId: planId || null,
-    planName: plan?.name || 'One-Off Service',
-    suburb,
-    pickupDate,
-    pickupTimeSlot,
+    guestEmail: guestEmail || user?.email || null,
+    guestName: guestName || user?.name || null,
+    guestPhone: guestPhone || user?.phone || null,
+    type: type || 'one-off', planId: planId || null, planName: plan?.name || 'One-Off Service',
+    suburb, pickupDate, pickupTimeSlot,
     deliveryPreference: deliveryPreference || 'standard',
-    items: items || 0,
-    weightKg: weightKg || 5,
+    items: items || 0, weightKg: weightKg || 5,
     instructions: instructions || '',
-    addons: selectedAddons,
-    baseCost,
-    addonsTotal: parseFloat(addonsTotal.toFixed(2)),
-    subtotal,
-    gst,
-    total,
+    addons: selectedAddons, baseCost, addonsTotal: parseFloat(addonsTotal.toFixed(2)),
+    discount, promoCode: appliedPromo,
+    subtotal, gst, total,
     status: 'Order Placed',
     statusHistory: [{ status: 'Order Placed', timestamp: new Date().toISOString(), note: 'Order created' }],
-    paymentStatus: 'pending',
-    qrCode,
-    trackingUrl,
+    paymentStatus: 'pending', qrCode, trackingUrl,
+    driverId, driverName,
     itemsConfirmed: false,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
   };
 
-  const db = await getDb();
   await db.collection('orders').insertOne(order);
+  
+  // Send notification
+  await sendNotification('order_created', { trackingId, trackingUrl, name: order.guestName, email: order.guestEmail, phone: order.guestPhone, total: order.total, planName: order.planName });
+
   return json({ order, message: 'Booking created successfully' }, 201);
 }
 
