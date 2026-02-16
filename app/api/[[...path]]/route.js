@@ -285,6 +285,12 @@ async function handleUpdateBookingStatus(request, bookingId) {
 
   await db.collection('orders').updateOne({ id: bookingId }, { $set: update });
   const updated = await db.collection('orders').findOne({ id: bookingId });
+  
+  // Send notification on status change
+  if (status) {
+    await sendNotification('status_updated', { trackingId: updated.trackingId, status, email: updated.guestEmail, name: updated.guestName, phone: updated.guestPhone });
+  }
+  
   return json({ order: updated });
 }
 
