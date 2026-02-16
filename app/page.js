@@ -551,6 +551,11 @@ function BookingView({ type, setView, user }) {
   const [guestEmail, setGuestEmail] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoDiscount, setPromoDiscount] = useState(0);
+  const [promoApplied, setPromoApplied] = useState(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [capacity, setCapacity] = useState(null);
 
   const isOneOff = type === 'one-off';
   const plan = PLANS.find(p => p.id === selectedPlan);
