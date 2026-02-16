@@ -465,7 +465,7 @@ function Footer({ setView }) {
             <h4 className="text-white font-semibold mb-4">Contact</h4>
             <ul className="space-y-2 text-sm">
               <li className="flex items-center gap-2"><Phone className="w-4 h-4" /> 1300 FRESH FOLD</li>
-              <li className="flex items-center gap-2"><Mail className="w-4 h-4" /> hello@freshfold.com.au</li>
+              <li className="flex items-center gap-2"><Mail className="w-4 h-4" /> <span>hello@freshfold.com.au</span></li>
               <li className="flex items-center gap-2"><MapPin className="w-4 h-4" /> Geelong, VIC 3220</li>
             </ul>
           </div>
