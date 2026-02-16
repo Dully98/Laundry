@@ -428,7 +428,7 @@ function FinalCTA({ setView }) {
         <p className="text-blue-100/80 text-lg mb-8 max-w-2xl mx-auto">Limited pickup slots per suburb daily. Join hundreds of Geelong locals who have reclaimed their weekends.</p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button size="lg" onClick={() => setView('booking')} className="bg-white text-blue-700 hover:bg-blue-50 px-10 py-6 rounded-xl text-base font-semibold shadow-lg">Subscribe Now</Button>
-          <Button size="lg" variant="outline" onClick={() => setView('booking-oneoff')} className="border-white/30 text-white hover:bg-white/10 px-10 py-6 rounded-xl text-base">Book One-Off</Button>
+          <Button size="lg" variant="outline" onClick={() => setView('booking-oneoff')} className="bg-white/10 backdrop-blur border-2 border-white/40 text-white hover:bg-white/20 px-10 py-6 rounded-xl text-base font-medium">Book One-Off</Button>
         </div>
       </div>
     </section>
