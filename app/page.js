@@ -91,30 +91,30 @@ function Navbar({ view, setView, user, onLogout }) {
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-700">Fresh Fold</span>
+            <span className={`text-xl font-bold ${scrolled ? 'bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-700' : 'text-white'}`}>Fresh Fold</span>
           </button>
           <div className="hidden md:flex items-center gap-6">
-            <button onClick={() => nav('home')} className={`text-sm font-medium transition hover:text-blue-600 ${scrolled ? 'text-slate-700' : 'text-slate-700'}`}>Home</button>
-            <a href="#pricing" className="text-sm font-medium text-slate-700 hover:text-blue-600 transition">Pricing</a>
-            <a href="#how-it-works" className="text-sm font-medium text-slate-700 hover:text-blue-600 transition">How It Works</a>
-            <a href="#service-areas" className="text-sm font-medium text-slate-700 hover:text-blue-600 transition">Service Areas</a>
-            <a href="#faq" className="text-sm font-medium text-slate-700 hover:text-blue-600 transition">FAQ</a>
+            <button onClick={() => nav('home')} className={`text-sm font-medium transition ${scrolled ? 'text-slate-700 hover:text-blue-600' : 'text-white/90 hover:text-white'}`}>Home</button>
+            <a href="#pricing" className={`text-sm font-medium transition ${scrolled ? 'text-slate-700 hover:text-blue-600' : 'text-white/90 hover:text-white'}`}>Pricing</a>
+            <a href="#how-it-works" className={`text-sm font-medium transition ${scrolled ? 'text-slate-700 hover:text-blue-600' : 'text-white/90 hover:text-white'}`}>How It Works</a>
+            <a href="#service-areas" className={`text-sm font-medium transition ${scrolled ? 'text-slate-700 hover:text-blue-600' : 'text-white/90 hover:text-white'}`}>Service Areas</a>
+            <a href="#faq" className={`text-sm font-medium transition ${scrolled ? 'text-slate-700 hover:text-blue-600' : 'text-white/90 hover:text-white'}`}>FAQ</a>
           </div>
           <div className="hidden md:flex items-center gap-3">
             {user ? (
               <>
-                <Button variant="ghost" size="sm" onClick={() => nav('dashboard')} className="gap-2"><LayoutDashboard className="w-4 h-4" />Dashboard</Button>
-                {user.role === 'admin' && <Button variant="ghost" size="sm" onClick={() => nav('admin')} className="gap-2"><Settings className="w-4 h-4" />Admin</Button>}
-                <Button variant="ghost" size="sm" onClick={onLogout} className="gap-2 text-red-600 hover:text-red-700"><LogOut className="w-4 h-4" />Logout</Button>
+                <Button variant="ghost" size="sm" onClick={() => nav('dashboard')} className={`gap-2 ${scrolled ? '' : 'text-white hover:bg-white/10'}`}><LayoutDashboard className="w-4 h-4" />Dashboard</Button>
+                {user.role === 'admin' && <Button variant="ghost" size="sm" onClick={() => nav('admin')} className={`gap-2 ${scrolled ? '' : 'text-white hover:bg-white/10'}`}><Settings className="w-4 h-4" />Admin</Button>}
+                <Button variant="ghost" size="sm" onClick={onLogout} className={`gap-2 ${scrolled ? 'text-red-600 hover:text-red-700' : 'text-red-300 hover:text-red-200 hover:bg-white/10'}`}><LogOut className="w-4 h-4" />Logout</Button>
               </>
             ) : (
               <>
-                <Button variant="ghost" size="sm" onClick={() => nav('login')}>Log In</Button>
+                <Button variant="ghost" size="sm" onClick={() => nav('login')} className={scrolled ? '' : 'text-white hover:bg-white/10'}>Log In</Button>
                 <Button size="sm" onClick={() => nav('register')} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white">Sign Up</Button>
               </>
             )}
           </div>
-          <button className="md:hidden" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}</button>
+          <button className="md:hidden" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X className={`w-6 h-6 ${scrolled ? '' : 'text-white'}`} /> : <Menu className={`w-6 h-6 ${scrolled ? '' : 'text-white'}`} />}</button>
         </div>
       </div>
       {menuOpen && (
