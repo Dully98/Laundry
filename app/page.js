@@ -564,12 +564,30 @@ function BookingView({ type, setView, user }) {
     const addon = ADDONS.find(a => a.id === id);
     return sum + (addon ? addon.price * qty : 0);
   }, 0);
-  const subtotal = parseFloat((baseCost + addonsTotal).toFixed(2));
+  const rawSubtotal = parseFloat((baseCost + addonsTotal).toFixed(2));
+  const subtotal = parseFloat((rawSubtotal - promoDiscount).toFixed(2));
   const gst = parseFloat((subtotal * GST_RATE).toFixed(2));
   const total = parseFloat((subtotal + gst).toFixed(2));
 
   const timeSlots = ['8:00 AM - 10:00 AM','10:00 AM - 12:00 PM','12:00 PM - 2:00 PM','2:00 PM - 4:00 PM','4:00 PM - 6:00 PM'];
   const suburbValid = suburb && SUBURBS.some(s => s.toLowerCase() === suburb.toLowerCase().trim());
+
+  // Fetch capacity when suburb and date change
+  useEffect(() => {
+    if (suburbValid && pickupDate) {
+      fetch(`/api/capacity?date=${pickupDate}&suburb=${suburb}`).then(r => r.json()).then(d => setCapacity(d.capacity)).catch(() => {});
+    }
+  }, [suburb, pickupDate, suburbValid]);
+
+  const applyPromo = async () => {
+    if (!promoCode.trim()) return;
+    setPromoLoading(true);
+    try {
+      const data = await api('promo/validate', { method: 'POST', body: JSON.stringify({ code: promoCode, subtotal: rawSubtotal }) });
+      if (data.valid) { setPromoDiscount(data.discount); setPromoApplied(data.code); toast.success(`Promo applied! -$${data.discount.toFixed(2)}`); }
+    } catch (e) { toast.error(e.message); setPromoDiscount(0); setPromoApplied(null); }
+    finally { setPromoLoading(false); }
+  };
 
   const toggleAddon = (id, delta) => {
     setSelectedAddons(prev => {
