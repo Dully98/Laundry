@@ -799,15 +799,17 @@ function DashboardView({ user, setView }) {
   const [subscription, setSubscription] = useState(null);
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [referralCode, setReferralCode] = useState('');
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [ordersData, subData, compData] = await Promise.all([
-          api('bookings'), api('subscriptions'), api('complaints'),
+        const [ordersData, subData, compData, refData] = await Promise.all([
+          api('bookings'), api('subscriptions'), api('complaints'), api('referral'),
         ]);
         setOrders(ordersData.orders || []);
         setSubscription(subData.subscription);
+        setReferralCode(refData.referralCode || '');
         setComplaints(compData.complaints || []);
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
