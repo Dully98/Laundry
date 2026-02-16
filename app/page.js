@@ -14,8 +14,10 @@ import {
   AlertTriangle, Settings, CreditCard, QrCode, ChevronDown, ArrowRight, Zap,
   Heart, Timer, Shirt, Droplets, Wind, Award, Building2, Users, TrendingUp,
   DollarSign, BarChart3, Eye, FileText, Search, Filter, Loader2, Plus, Minus,
-  Calendar, MessageSquare, Camera, RefreshCw, Pause, Play, XCircle, Home
+  Calendar, MessageSquare, Camera, RefreshCw, Pause, Play, XCircle, Home,
+  Tag, Gift, Upload, Download, UserCheck, MapPinned, Image as ImageIcon
 } from 'lucide-react';
+import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 // ===== CONSTANTS =====
 const PLANS = [
