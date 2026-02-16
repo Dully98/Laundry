@@ -1023,6 +1023,17 @@ function ComplaintView({ user, complaints, setComplaints, orders }) {
               </div>
             </div>
             <div><label className="text-sm font-medium mb-1 block">Description *</label><textarea className="w-full p-3 rounded-lg border border-slate-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500" rows={4} value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe the issue in detail..." /></div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Photos (optional)</label>
+              <div className="flex items-center gap-3">
+                <label className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg border border-dashed border-slate-300 hover:border-blue-400 text-sm text-slate-600">
+                  <Upload className="w-4 h-4" /> Upload Photos
+                  <input type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" />
+                </label>
+                {photos.length > 0 && <span className="text-xs text-slate-500">{photos.length} photo(s)</span>}
+              </div>
+              {photos.length > 0 && <div className="flex gap-2 mt-2">{photos.map((p, i) => <div key={i} className="relative"><img src={p} alt="Upload" className="w-16 h-16 object-cover rounded-lg border" /><button onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))} className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center">x</button></div>)}</div>}
+            </div>
             <Button type="submit" disabled={loading} className="bg-blue-600 text-white">{loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}Submit Complaint</Button>
           </form>
         </CardContent>
