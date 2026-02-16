@@ -384,10 +384,187 @@ function CorporateSection({ setView }) {
                 <div key={i} className="flex items-center gap-2 text-blue-100"><CheckCircle2 className="w-4 h-4 text-emerald-400" /><span className="text-sm">{f}</span></div>
               ))}
             </div>
-            <Button onClick={() => setView('booking')} className="mt-8 bg-white text-blue-900 hover:bg-blue-50 px-8 py-5 rounded-xl font-semibold" size="lg">Contact Sales <ArrowRight className="w-5 h-5 ml-2" /></Button>
+            <a href="mailto:sales@freshfold.com.au?subject=Corporate%20%2F%20NDIS%20Plan%20Inquiry&body=Hi%20Fresh%20Fold%20Team%2C%0A%0AI%27m%20interested%20in%20learning%20more%20about%20your%20corporate%20%2F%20NDIS%20laundry%20plans.%0A%0ACompany%20Name%3A%20%0AContact%20Name%3A%20%0APhone%3A%20%0AEstimated%20Volume%3A%20%0A%0AThank%20you!" className="inline-block mt-8">
+              <Button className="bg-white text-blue-900 hover:bg-blue-50 px-8 py-5 rounded-xl font-semibold" size="lg">Contact Sales <Mail className="w-5 h-5 ml-2" /></Button>
+            </a>
           </div>
           <div className="hidden lg:block">
             <img src="https://images.unsplash.com/photo-1546695032-98e64e4cbe0c?auto=format&fit=crop&w=600&q=80" alt="Professional laundry" className="rounded-2xl shadow-2xl" />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ===== INSTANT COMPLAINT & SUPPORT SECTION =====
+function InstantSupportSection() {
+  const [category, setCategory] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [trackingId, setTrackingId] = useState('');
+  const [description, setDescription] = useState('');
+  const [photos, setPhotos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(null);
+
+  const categories = ['Missing Item', 'Damaged Garment', 'Quality Issue', 'Late Delivery', 'Billing Issue', 'General Inquiry', 'Other'];
+
+  const handlePhotoUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    files.forEach(file => {
+      if (file.size > 5 * 1024 * 1024) { toast.error('Photo must be under 5MB'); return; }
+      const reader = new FileReader();
+      reader.onload = () => setPhotos(prev => [...prev, reader.result]);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!category || !description || !name || !email) { toast.error('Please fill all required fields'); return; }
+    setLoading(true);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('ff_token') : null;
+      const headers = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+      const res = await fetch('/api/complaints', {
+        method: 'POST', headers,
+        body: JSON.stringify({ category, description, photos, guestName: name, guestEmail: email, guestPhone: phone }),
+      });
+      const data = await res.json();
+      if (data.complaint) {
+        setSubmitted(data.complaint);
+        toast.success('Complaint submitted! Ticket: ' + data.complaint.ticketNumber);
+      } else { toast.error(data.error || 'Submission failed'); }
+    } catch (err) { toast.error('Network error. Please try again.'); }
+    finally { setLoading(false); }
+  };
+
+  if (submitted) {
+    return (
+      <section id="support" className="py-20 sm:py-28 bg-gradient-to-br from-red-50 via-orange-50 to-amber-50">
+        <div className="max-w-2xl mx-auto px-4 text-center">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-emerald-100 flex items-center justify-center"><CheckCircle2 className="w-10 h-10 text-emerald-600" /></div>
+          <h2 className="text-3xl font-bold text-slate-900 mb-3">Complaint Received</h2>
+          <p className="text-slate-600 mb-6">Our team will review and respond within <span className="font-semibold text-blue-600">24 hours</span>.</p>
+          <Card className="max-w-md mx-auto border-0 shadow-lg"><CardContent className="pt-6 text-left space-y-3">
+            <div className="flex justify-between"><span className="text-slate-500 text-sm">Ticket Number</span><span className="font-mono font-bold text-blue-600">{submitted.ticketNumber}</span></div>
+            <Separator />
+            <div className="flex justify-between"><span className="text-slate-500 text-sm">Category</span><span className="font-medium">{submitted.category}</span></div>
+            <div className="flex justify-between"><span className="text-slate-500 text-sm">Status</span><Badge className="bg-amber-100 text-amber-700">Open — Priority</Badge></div>
+          </CardContent></Card>
+          <p className="text-sm text-slate-500 mt-6">Save your ticket number. We'll email updates to <span className="font-medium">{submitted.userEmail}</span></p>
+          <Button className="mt-4" variant="outline" onClick={() => { setSubmitted(null); setCategory(''); setDescription(''); setName(''); setEmail(''); setPhone(''); setPhotos([]); }}>Submit Another</Button>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section id="support" className="py-20 sm:py-28 bg-gradient-to-br from-red-50 via-orange-50 to-amber-50">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 bg-red-100 text-red-700 border border-red-200 rounded-full px-4 py-1.5 text-sm font-medium mb-4">
+            <AlertTriangle className="w-4 h-4" /> Priority Support
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">Instant Complaint & Support</h2>
+          <p className="text-slate-600 text-lg max-w-2xl mx-auto">Something wrong with your order? Missing items, damaged garments, or quality concerns? <span className="font-semibold text-slate-900">Submit here for rapid resolution within 24 hours.</span></p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Quick Info Cards */}
+          <div className="space-y-4">
+            {[
+              { icon: Clock, title: '24hr Response', desc: 'Every complaint reviewed within 24 hours by our quality team.', color: 'text-blue-600 bg-blue-50' },
+              { icon: ShieldCheck, title: 'Full Accountability', desc: 'Photo evidence, ticket tracking, and resolution confirmation.', color: 'text-emerald-600 bg-emerald-50' },
+              { icon: CreditCard, title: 'Easy Refunds', desc: 'Eligible issues receive refunds processed within 3-5 business days.', color: 'text-purple-600 bg-purple-50' },
+            ].map((item, i) => (
+              <div key={i} className="flex items-start gap-3 p-4 rounded-xl bg-white shadow-sm border border-slate-100">
+                <div className={`w-10 h-10 rounded-lg ${item.color} flex items-center justify-center shrink-0`}><item.icon className="w-5 h-5" /></div>
+                <div><p className="font-semibold text-slate-900 text-sm">{item.title}</p><p className="text-slate-500 text-xs leading-relaxed mt-0.5">{item.desc}</p></div>
+              </div>
+            ))}
+            <div className="p-4 rounded-xl bg-white shadow-sm border border-slate-100">
+              <p className="text-sm font-medium text-slate-900 mb-2">Or reach us directly:</p>
+              <div className="space-y-1.5 text-sm text-slate-600">
+                <p className="flex items-center gap-2"><Phone className="w-3.5 h-3.5 text-blue-600" /> 1300 FRESH FOLD</p>
+                <p className="flex items-center gap-2"><Mail className="w-3.5 h-3.5 text-blue-600" /> <a href="mailto:support@freshfold.com.au" className="hover:text-blue-600 underline">support@freshfold.com.au</a></p>
+              </div>
+            </div>
+          </div>
+
+          {/* Complaint Form */}
+          <div className="lg:col-span-2">
+            <Card className="shadow-lg border-0">
+              <CardHeader className="bg-gradient-to-r from-red-500 to-orange-500 rounded-t-xl">
+                <CardTitle className="text-white flex items-center gap-2"><MessageSquare className="w-5 h-5" /> Submit a Complaint or Inquiry</CardTitle>
+                <CardDescription className="text-red-100">No login required. We respond to every submission.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-6">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Category Selection */}
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 mb-2 block">What's the issue? *</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {categories.map(c => (
+                        <button type="button" key={c} onClick={() => setCategory(c)}
+                          className={`p-2.5 rounded-lg border text-xs font-medium text-center transition ${category === c ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Contact Info */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div><label className="text-sm font-medium text-slate-700 mb-1 block">Your Name *</label><Input placeholder="Full name" value={name} onChange={e => setName(e.target.value)} required /></div>
+                    <div><label className="text-sm font-medium text-slate-700 mb-1 block">Email *</label><Input type="email" placeholder="email@example.com" value={email} onChange={e => setEmail(e.target.value)} required /></div>
+                    <div><label className="text-sm font-medium text-slate-700 mb-1 block">Phone</label><Input type="tel" placeholder="04XX XXX XXX" value={phone} onChange={e => setPhone(e.target.value)} /></div>
+                  </div>
+
+                  {/* Tracking ID */}
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 mb-1 block">Order Tracking ID (if applicable)</label>
+                    <Input placeholder="e.g. FF-A1B2C3D4" value={trackingId} onChange={e => setTrackingId(e.target.value.toUpperCase())} className="font-mono" />
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 mb-1 block">Describe the issue in detail *</label>
+                    <textarea className="w-full p-3 rounded-lg border border-slate-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-500 min-h-[100px]" rows={4} value={description} onChange={e => setDescription(e.target.value)} placeholder="Please provide as much detail as possible: What happened? When did it happen? Which items are affected?" required />
+                  </div>
+
+                  {/* Photo Upload */}
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 mb-2 block">Upload Photos (optional but recommended)</label>
+                    <div className="flex items-center gap-3">
+                      <label className="cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 border-dashed border-slate-300 hover:border-red-400 text-sm text-slate-600 hover:text-red-600 transition">
+                        <Camera className="w-4 h-4" /> Add Photos
+                        <input type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" />
+                      </label>
+                      {photos.length > 0 && <span className="text-xs text-slate-500">{photos.length} photo(s) attached</span>}
+                    </div>
+                    {photos.length > 0 && (
+                      <div className="flex gap-2 mt-3">
+                        {photos.map((p, i) => (
+                          <div key={i} className="relative group">
+                            <img src={p} alt="Evidence" className="w-20 h-20 object-cover rounded-lg border shadow-sm" />
+                            <button type="button" onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition">x</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <Button type="submit" disabled={loading} className="w-full py-5 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white text-base font-semibold rounded-xl">
+                    {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <AlertTriangle className="w-5 h-5 mr-2" />}
+                    Submit Complaint — Priority Response
+                  </Button>
+                  <p className="text-xs text-center text-slate-400">Your submission is confidential. We aim to resolve all issues within 24 hours.</p>
+                </form>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
