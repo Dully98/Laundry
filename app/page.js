@@ -1084,14 +1084,14 @@ function AdminView({ user, setView }) {
               <>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
                   {[
-                    { label: 'Total Orders', val: stats.totalOrders, icon: Package, color: 'blue' },
-                    { label: 'Total Revenue', val: '$' + (stats.totalRevenue || 0).toFixed(2), icon: DollarSign, color: 'emerald' },
-                    { label: 'Subscriptions', val: stats.activeSubscriptions, icon: CreditCard, color: 'indigo' },
-                    { label: 'One-Off', val: stats.oneOffOrders, icon: Truck, color: 'amber' },
-                    { label: 'Users', val: stats.totalUsers, icon: Users, color: 'purple' },
-                    { label: 'Open Tickets', val: stats.openComplaints, icon: AlertTriangle, color: 'red' },
+                    { label: 'Total Orders', val: stats.totalOrders, icon: Package, cls: 'text-blue-600' },
+                    { label: 'Total Revenue', val: '$' + (stats.totalRevenue || 0).toFixed(2), icon: DollarSign, cls: 'text-emerald-600' },
+                    { label: 'Subscriptions', val: stats.activeSubscriptions, icon: CreditCard, cls: 'text-indigo-600' },
+                    { label: 'One-Off', val: stats.oneOffOrders, icon: Truck, cls: 'text-amber-600' },
+                    { label: 'Users', val: stats.totalUsers, icon: Users, cls: 'text-purple-600' },
+                    { label: 'Open Tickets', val: stats.openComplaints, icon: AlertTriangle, cls: 'text-red-600' },
                   ].map((s, i) => (
-                    <Card key={i} className="border-0 shadow-md"><CardContent className="pt-6"><s.icon className={`w-5 h-5 text-${s.color}-600 mb-2`} /><p className="text-xs text-slate-500">{s.label}</p><p className="text-2xl font-bold">{s.val}</p></CardContent></Card>
+                    <Card key={i} className="border-0 shadow-md"><CardContent className="pt-6"><s.icon className={`w-5 h-5 mb-2 ${s.cls}`} /><p className="text-xs text-slate-500">{s.label}</p><p className="text-2xl font-bold">{s.val}</p></CardContent></Card>
                   ))}
                 </div>
                 {stats.recentOrders?.length > 0 && (
