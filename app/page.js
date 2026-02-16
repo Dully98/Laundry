@@ -975,16 +975,27 @@ function ComplaintView({ user, complaints, setComplaints, orders }) {
   const [description, setDescription] = useState('');
   const [orderId, setOrderId] = useState('');
   const [loading, setLoading] = useState(false);
+  const [photos, setPhotos] = useState([]);
+
+  const handlePhotoUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    files.forEach(file => {
+      if (file.size > 5 * 1024 * 1024) { toast.error('Photo must be under 5MB'); return; }
+      const reader = new FileReader();
+      reader.onload = () => setPhotos(prev => [...prev, reader.result]);
+      reader.readAsDataURL(file);
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!category || !description) { toast.error('Please fill all required fields'); return; }
     setLoading(true);
     try {
-      const data = await api('complaints', { method: 'POST', body: JSON.stringify({ category, description, orderId: orderId || null }) });
+      const data = await api('complaints', { method: 'POST', body: JSON.stringify({ category, description, orderId: orderId || null, photos }) });
       toast.success('Complaint submitted. Ticket: ' + data.complaint.ticketNumber);
       setComplaints(prev => [data.complaint, ...prev]);
-      setCategory(''); setDescription(''); setOrderId('');
+      setCategory(''); setDescription(''); setOrderId(''); setPhotos([]);
     } catch (e) { toast.error(e.message); }
     finally { setLoading(false); }
   };
