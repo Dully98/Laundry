@@ -610,7 +610,7 @@ function BookingView({ type, setView, user }) {
         body: JSON.stringify({
           type: isOneOff ? 'one-off' : 'subscription', planId: selectedPlan,
           suburb, pickupDate, pickupTimeSlot: pickupTime, deliveryPreference: deliveryPref,
-          items, weightKg, instructions, addons: addonsArr,
+          items, weightKg, instructions, addons: addonsArr, promoCode: promoApplied || undefined,
           guestEmail: guestEmail || user?.email, guestName: guestName || user?.name, guestPhone,
         }),
       });
