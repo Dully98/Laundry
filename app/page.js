@@ -165,7 +165,7 @@ function HeroSection({ setView }) {
           <p className="text-lg sm:text-xl text-blue-100/80 mb-8 max-w-2xl">Premium wash, fold & iron — delivered to your door. Plans from <span className="text-white font-semibold">$19.99/month</span>. Or book a one-off pickup anytime.</p>
           <div className="flex flex-col sm:flex-row gap-3 mb-8">
             <Button size="lg" onClick={() => setView('booking')} className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white text-base px-8 py-6 rounded-xl shadow-lg shadow-blue-500/25">Start Subscription <ArrowRight className="w-5 h-5 ml-2" /></Button>
-            <Button size="lg" variant="outline" onClick={() => setView('booking-oneoff')} className="border-white/30 text-white hover:bg-white/10 text-base px-8 py-6 rounded-xl">Book One-Off Pickup</Button>
+            <Button size="lg" onClick={() => setView('booking-oneoff')} className="bg-white/10 backdrop-blur border-2 border-white/40 text-white hover:bg-white/20 text-base px-8 py-6 rounded-xl font-medium">Book One-Off Pickup</Button>
           </div>
           <div className="flex items-center gap-2 max-w-md">
             <div className="relative flex-1">
