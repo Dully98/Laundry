@@ -398,7 +398,7 @@ async function handleCheckoutStatus(sessionId) {
 async function handleCreateComplaint(request) {
   const user = await getUser(request);
   const body = await request.json();
-  const { orderId, category, description, photoUrl } = body;
+  const { orderId, category, description, photoUrl, photos } = body;
   if (!category || !description) return json({ error: 'Category and description required' }, 400);
 
   const complaint = {
@@ -411,6 +411,7 @@ async function handleCreateComplaint(request) {
     category,
     description,
     photoUrl: photoUrl || null,
+    photos: photos || [], // Array of base64 encoded images
     status: 'open',
     resolution: null,
     refundAmount: null,
@@ -420,6 +421,10 @@ async function handleCreateComplaint(request) {
   };
   const db = await getDb();
   await db.collection('complaints').insertOne(complaint);
+  
+  // Send notification
+  await sendNotification('complaint_submitted', { ticketNumber: complaint.ticketNumber, category, email: complaint.userEmail, name: complaint.userName, phone: user?.phone });
+
   return json({ complaint, message: 'Complaint submitted. Ticket: ' + complaint.ticketNumber }, 201);
 }
 
