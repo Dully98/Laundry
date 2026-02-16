@@ -530,6 +530,272 @@ async function handleMakeAdmin(request) {
   return json({ message: 'User promoted to admin' });
 }
 
+// ===== NOTIFICATION SYSTEM (Ready for SendGrid/Twilio) =====
+async function sendNotification(type, data) {
+  const db = await getDb();
+  const subjects = {
+    'order_created': 'Fresh Fold - Order Confirmed!',
+    'status_updated': 'Fresh Fold - Order Status Update',
+    'payment_received': 'Fresh Fold - Payment Confirmed',
+    'complaint_submitted': 'Fresh Fold - Complaint Received',
+    'complaint_resolved': 'Fresh Fold - Complaint Resolved',
+    'subscription_created': 'Fresh Fold - Welcome to Your Plan!',
+    'subscription_paused': 'Fresh Fold - Subscription Paused',
+    'subscription_cancelled': 'Fresh Fold - Subscription Cancelled',
+  };
+  const messages = {
+    'order_created': `Hi ${data.name || 'there'}! Your order ${data.trackingId} has been confirmed. Track it at: ${data.trackingUrl || 'your dashboard'}`,
+    'status_updated': `Your order ${data.trackingId} status updated to: ${data.status}`,
+    'payment_received': `Payment of $${data.amount} AUD received for order ${data.trackingId}. Thank you!`,
+    'complaint_submitted': `Your complaint (${data.ticketNumber}) has been received. We'll respond within 24 hours.`,
+    'complaint_resolved': `Your complaint (${data.ticketNumber}) has been resolved: ${data.resolution}`,
+    'subscription_created': `Welcome! You're now subscribed to the ${data.planName} plan.`,
+    'subscription_paused': `Your ${data.planName} subscription has been paused. Resume anytime.`,
+    'subscription_cancelled': `Your ${data.planName} subscription has been cancelled.`,
+  };
+  const notification = {
+    id: uuidv4(), type, data: { ...data, _sanitized: true },
+    email: data.email || null, phone: data.phone || null,
+    subject: subjects[type] || 'Fresh Fold Notification',
+    message: messages[type] || `Update for ${data.trackingId || 'your account'}`,
+    status: 'queued', sentVia: null, sentAt: null, createdAt: new Date().toISOString(),
+  };
+  // SendGrid integration (ready - add SENDGRID_API_KEY to .env)
+  if (process.env.SENDGRID_API_KEY && data.email) {
+    try {
+      // TODO: Uncomment when @sendgrid/mail is installed and SENDGRID_API_KEY is set
+      // const sgMail = require('@sendgrid/mail');
+      // sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+      // await sgMail.send({ to: data.email, from: process.env.SENDGRID_FROM || 'noreply@freshfold.com.au', subject: notification.subject, text: notification.message, html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px"><h2 style="color:#3B82F6">Fresh Fold</h2><p>${notification.message}</p><hr><p style="color:#94A3B8;font-size:12px">Fresh Fold Pty Ltd | Geelong, VIC 3220</p></div>` });
+      notification.sentVia = 'sendgrid';
+      notification.status = 'sent';
+      notification.sentAt = new Date().toISOString();
+    } catch(e) { notification.status = 'failed'; notification.error = e.message; }
+  }
+  // Twilio SMS integration (ready - add TWILIO_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE to .env)
+  if (process.env.TWILIO_SID && process.env.TWILIO_AUTH_TOKEN && data.phone) {
+    try {
+      // TODO: Uncomment when twilio is installed and keys are set
+      // const twilio = require('twilio')(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
+      // await twilio.messages.create({ body: notification.message, from: process.env.TWILIO_PHONE, to: data.phone });
+      notification.sentVia = (notification.sentVia ? notification.sentVia + '+sms' : 'twilio');
+      notification.status = 'sent';
+    } catch(e) { console.error('Twilio error:', e.message); }
+  }
+  if (notification.status === 'queued') {
+    console.log(`[NOTIFICATION] ${type} -> ${data.email || data.phone || 'no-contact'}: ${notification.message.substring(0, 120)}`);
+  }
+  await db.collection('notifications').insertOne(notification);
+  return notification;
+}
+
+// ===== INVOICE =====
+async function handleGetInvoice(request, orderId) {
+  const db = await getDb();
+  const order = await db.collection('orders').findOne({ id: orderId });
+  if (!order) return json({ error: 'Order not found' }, 404);
+  const user = order.userId ? await db.collection('users').findOne({ id: order.userId }) : null;
+  return json({
+    invoice: {
+      invoiceNumber: 'INV-' + order.trackingId,
+      date: order.createdAt,
+      company: { name: 'Fresh Fold Pty Ltd', abn: '12 345 678 901', address: 'Geelong, VIC 3220, Australia', email: 'hello@freshfold.com.au', phone: '1300 FRESH FOLD' },
+      customer: { name: user?.name || order.guestName || 'Guest', email: user?.email || order.guestEmail || '', phone: user?.phone || order.guestPhone || '', suburb: order.suburb },
+      order: { trackingId: order.trackingId, type: order.type, planName: order.planName, pickupDate: order.pickupDate, pickupTimeSlot: order.pickupTimeSlot, items: order.items, weightKg: order.weightKg },
+      lineItems: [
+        { description: order.planName, quantity: 1, unitPrice: order.baseCost, total: order.baseCost },
+        ...(order.addons || []).map(a => ({ description: a.name, quantity: a.quantity, unitPrice: a.price, total: a.subtotal })),
+      ],
+      subtotal: order.subtotal, gst: order.gst, discount: order.discount || 0, promoCode: order.promoCode || null, total: order.total, paymentStatus: order.paymentStatus,
+    }
+  });
+}
+
+// ===== PROMO CODE ENGINE =====
+async function handleCreatePromo(request) {
+  const user = await getUser(request);
+  if (!user || user.role !== 'admin') return json({ error: 'Admin access required' }, 403);
+  const { code, type, value, expiryDate, maxUses, description } = await request.json();
+  if (!code || !type || value === undefined) return json({ error: 'Code, type, and value required' }, 400);
+  const db = await getDb();
+  const exists = await db.collection('promo_codes').findOne({ code: code.toUpperCase() });
+  if (exists) return json({ error: 'Code already exists' }, 409);
+  const promo = { id: uuidv4(), code: code.toUpperCase(), type, value: parseFloat(value), description: description || '', expiryDate: expiryDate || null, maxUses: maxUses ? parseInt(maxUses) : null, currentUses: 0, active: true, createdAt: new Date().toISOString() };
+  await db.collection('promo_codes').insertOne(promo);
+  return json({ promo }, 201);
+}
+
+async function handleValidatePromo(request) {
+  const { code, subtotal } = await request.json();
+  if (!code) return json({ error: 'Code required' }, 400);
+  const db = await getDb();
+  const promo = await db.collection('promo_codes').findOne({ code: code.toUpperCase(), active: true });
+  if (!promo) return json({ error: 'Invalid or expired promo code' }, 404);
+  if (promo.expiryDate && new Date(promo.expiryDate) < new Date()) return json({ error: 'Promo code has expired' }, 400);
+  if (promo.maxUses && promo.currentUses >= promo.maxUses) return json({ error: 'Usage limit reached' }, 400);
+  let discount = promo.type === 'percentage' ? parseFloat(((subtotal || 0) * promo.value / 100).toFixed(2)) : promo.value;
+  return json({ valid: true, code: promo.code, type: promo.type, value: promo.value, discount, description: promo.description });
+}
+
+async function handleGetPromos(request) {
+  const user = await getUser(request);
+  if (!user || user.role !== 'admin') return json({ error: 'Admin access required' }, 403);
+  const db = await getDb();
+  const promos = await db.collection('promo_codes').find().sort({ createdAt: -1 }).toArray();
+  return json({ promos });
+}
+
+async function handleTogglePromo(request, promoId) {
+  const user = await getUser(request);
+  if (!user || user.role !== 'admin') return json({ error: 'Admin access required' }, 403);
+  const db = await getDb();
+  const promo = await db.collection('promo_codes').findOne({ id: promoId });
+  if (!promo) return json({ error: 'Not found' }, 404);
+  await db.collection('promo_codes').updateOne({ id: promoId }, { $set: { active: !promo.active } });
+  return json({ message: promo.active ? 'Deactivated' : 'Activated' });
+}
+
+// ===== DRIVER MANAGEMENT =====
+async function handleCreateDriver(request) {
+  const user = await getUser(request);
+  if (!user || user.role !== 'admin') return json({ error: 'Admin access required' }, 403);
+  const { name, phone, vehicle, zones } = await request.json();
+  if (!name) return json({ error: 'Driver name required' }, 400);
+  const db = await getDb();
+  const driver = { id: uuidv4(), name, phone: phone || '', vehicle: vehicle || '', assignedZones: zones || [], status: 'active', currentOrders: 0, totalDeliveries: 0, createdAt: new Date().toISOString() };
+  await db.collection('drivers').insertOne(driver);
+  return json({ driver }, 201);
+}
+
+async function handleGetDrivers(request) {
+  const user = await getUser(request);
+  if (!user || user.role !== 'admin') return json({ error: 'Admin access required' }, 403);
+  const db = await getDb();
+  const drivers = await db.collection('drivers').find().sort({ name: 1 }).toArray();
+  return json({ drivers });
+}
+
+async function handleUpdateDriver(request, driverId) {
+  const user = await getUser(request);
+  if (!user || user.role !== 'admin') return json({ error: 'Admin access required' }, 403);
+  const body = await request.json();
+  const db = await getDb();
+  const driver = await db.collection('drivers').findOne({ id: driverId });
+  if (!driver) return json({ error: 'Driver not found' }, 404);
+  const update = {}; 
+  if (body.name) update.name = body.name;
+  if (body.phone !== undefined) update.phone = body.phone;
+  if (body.vehicle !== undefined) update.vehicle = body.vehicle;
+  if (body.zones) update.assignedZones = body.zones;
+  if (body.status) update.status = body.status;
+  update.updatedAt = new Date().toISOString();
+  await db.collection('drivers').updateOne({ id: driverId }, { $set: update });
+  const updated = await db.collection('drivers').findOne({ id: driverId });
+  return json({ driver: updated });
+}
+
+async function handleAssignDriver(request, orderId) {
+  const user = await getUser(request);
+  if (!user || user.role !== 'admin') return json({ error: 'Admin access required' }, 403);
+  const { driverId } = await request.json();
+  const db = await getDb();
+  const order = await db.collection('orders').findOne({ id: orderId });
+  if (!order) return json({ error: 'Order not found' }, 404);
+  let driver = null;
+  if (driverId) {
+    driver = await db.collection('drivers').findOne({ id: driverId });
+    if (!driver) return json({ error: 'Driver not found' }, 404);
+  }
+  // Unassign previous driver
+  if (order.driverId) { await db.collection('drivers').updateOne({ id: order.driverId }, { $inc: { currentOrders: -1 } }); }
+  await db.collection('orders').updateOne({ id: orderId }, { $set: { driverId: driverId || null, driverName: driver?.name || null, updatedAt: new Date().toISOString() } });
+  if (driver) { await db.collection('drivers').updateOne({ id: driverId }, { $inc: { currentOrders: 1 } }); }
+  return json({ message: driver ? `Assigned to ${driver.name}` : 'Driver unassigned', driverName: driver?.name || null });
+}
+
+// ===== CAPACITY MANAGEMENT =====
+async function handleGetCapacity(request) {
+  const url = new URL(request.url);
+  const date = url.searchParams.get('date');
+  const suburb = url.searchParams.get('suburb');
+  if (!date || !suburb) return json({ error: 'Date and suburb query params required' }, 400);
+  const db = await getDb();
+  const settings = await db.collection('capacity_settings').findOne({ suburb: { $regex: new RegExp(`^${suburb}$`, 'i') }, active: true });
+  const maxPerSlot = settings?.maxPerSlot || 5;
+  const bookings = await db.collection('orders').aggregate([
+    { $match: { pickupDate: date, suburb: { $regex: new RegExp(`^${suburb}$`, 'i') } } },
+    { $group: { _id: '$pickupTimeSlot', count: { $sum: 1 } } }
+  ]).toArray();
+  const slots = ['8:00 AM - 10:00 AM','10:00 AM - 12:00 PM','12:00 PM - 2:00 PM','2:00 PM - 4:00 PM','4:00 PM - 6:00 PM'];
+  const capacity = slots.map(slot => {
+    const booked = bookings.find(b => b._id === slot)?.count || 0;
+    return { slot, maxCapacity: maxPerSlot, booked, available: Math.max(0, maxPerSlot - booked) };
+  });
+  return json({ date, suburb, capacity, maxPerSlot });
+}
+
+async function handleSetCapacity(request) {
+  const user = await getUser(request);
+  if (!user || user.role !== 'admin') return json({ error: 'Admin access required' }, 403);
+  const { suburb, maxPerSlot } = await request.json();
+  if (!suburb || !maxPerSlot) return json({ error: 'Suburb and maxPerSlot required' }, 400);
+  const db = await getDb();
+  await db.collection('capacity_settings').updateOne({ suburb }, { $set: { suburb, maxPerSlot: parseInt(maxPerSlot), active: true, updatedAt: new Date().toISOString() } }, { upsert: true });
+  return json({ message: `Capacity: ${maxPerSlot} per slot for ${suburb}` });
+}
+
+// ===== STRIPE WEBHOOK =====
+async function handleStripeWebhook(request) {
+  try {
+    const body = await request.text();
+    const db = await getDb();
+    let event;
+    try {
+      const Stripe = (await import('stripe')).default;
+      const stripe = new Stripe(process.env.STRIPE_API_KEY);
+      const sig = request.headers.get('stripe-signature');
+      if (process.env.STRIPE_WEBHOOK_SECRET && sig) {
+        event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+      } else { event = JSON.parse(body); }
+    } catch { event = JSON.parse(body); }
+    await db.collection('webhook_logs').insertOne({ id: uuidv4(), type: event.type, data: event.data, processedAt: new Date().toISOString() });
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
+      const orderId = session.metadata?.orderId;
+      if (orderId) {
+        await db.collection('orders').updateOne({ id: orderId }, { $set: { paymentStatus: 'paid', updatedAt: new Date().toISOString() } });
+        await db.collection('payment_transactions').updateOne({ sessionId: session.id }, { $set: { paymentStatus: 'paid', updatedAt: new Date().toISOString() } });
+        const order = await db.collection('orders').findOne({ id: orderId });
+        if (order) await sendNotification('payment_received', { trackingId: order.trackingId, amount: order.total, email: order.guestEmail, name: order.guestName });
+      }
+    } else if (event.type === 'customer.subscription.deleted') {
+      const sub = event.data.object;
+      if (sub.metadata?.userId) {
+        await db.collection('subscriptions').updateOne({ userId: sub.metadata.userId, status: { $ne: 'cancelled' } }, { $set: { status: 'cancelled', updatedAt: new Date().toISOString() } });
+      }
+    }
+    return json({ received: true });
+  } catch(err) { console.error('Webhook error:', err); return json({ error: err.message }, 400); }
+}
+
+// ===== NOTIFICATIONS LIST =====
+async function handleGetNotifications(request) {
+  const user = await getUser(request);
+  if (!user || user.role !== 'admin') return json({ error: 'Admin access required' }, 403);
+  const db = await getDb();
+  const notifications = await db.collection('notifications').find().sort({ createdAt: -1 }).limit(100).toArray();
+  return json({ notifications });
+}
+
+// ===== REFERRAL CODE =====
+async function handleGetReferralCode(request) {
+  const user = await getUser(request);
+  if (!user) return json({ error: 'Unauthorized' }, 401);
+  const code = 'REF-' + user.id.substring(0, 8).toUpperCase();
+  return json({ referralCode: code, userId: user.id });
+}
+
+
 // ===== ROUTER =====
 async function handler(request, context) {
   if (request.method === 'OPTIONS') return json({});
