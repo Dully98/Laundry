@@ -852,6 +852,12 @@ function DashboardView({ user, setView }) {
               <Button onClick={() => setView('booking')} className="bg-blue-600 text-white"><Plus className="w-4 h-4 mr-2" /> New Booking</Button>
               <Button variant="outline" onClick={() => setView('booking-oneoff')}><Package className="w-4 h-4 mr-2" /> One-Off Pickup</Button>
             </div>
+            {referralCode && (
+              <Card className="mb-8 border-blue-200 bg-blue-50"><CardContent className="pt-6 flex items-center justify-between">
+                <div><p className="font-medium text-blue-900 flex items-center gap-2"><Gift className="w-4 h-4" /> Your Referral Code</p><p className="text-sm text-blue-700 mt-1">Share this code with friends for discounts!</p></div>
+                <div className="flex items-center gap-2"><code className="bg-white px-4 py-2 rounded-lg font-mono font-bold text-blue-700 border border-blue-200">{referralCode}</code><Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(referralCode); toast.success('Copied!'); }}>Copy</Button></div>
+              </CardContent></Card>
+            )}
             {orders.length > 0 && (
               <Card><CardHeader><CardTitle className="text-lg">Recent Orders</CardTitle></CardHeader><CardContent>
                 <div className="space-y-3">
