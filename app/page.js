@@ -637,7 +637,7 @@ function Footer({ setView }) {
             <ul className="space-y-2 text-sm">
               <li><a href="#faq" className="hover:text-white transition">FAQ</a></li>
               <li><button onClick={() => setView('tracking-lookup')} className="hover:text-white transition">Track Order</button></li>
-              <li><button onClick={() => setView('dashboard')} className="hover:text-white transition">Contact Us</button></li>
+              <li><a href="#support" className="hover:text-white transition">Contact Us</a></li>
             </ul>
           </div>
           <div>
