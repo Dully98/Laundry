@@ -711,7 +711,11 @@ function BookingView({ type, setView, user }) {
                   <div>
                     <label className="text-sm font-medium text-slate-700 mb-2 block">Pickup Time Slot *</label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {timeSlots.map(t => <button key={t} onClick={() => setPickupTime(t)} className={`p-2.5 rounded-lg border text-sm text-center transition ${pickupTime === t ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium' : 'border-slate-200 hover:border-slate-300'}`}>{t}</button>)}
+                      {timeSlots.map(t => {
+                        const cap = capacity?.find(c => c.slot === t);
+                        const full = cap && cap.available <= 0;
+                        return <button key={t} onClick={() => !full && setPickupTime(t)} disabled={full} className={`p-2.5 rounded-lg border text-sm text-center transition ${full ? 'border-red-200 bg-red-50 text-red-400 cursor-not-allowed' : pickupTime === t ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium' : 'border-slate-200 hover:border-slate-300'}`}>{t}{cap && <span className={`block text-xs mt-0.5 ${full ? 'text-red-400' : cap.available <= 2 ? 'text-amber-500' : 'text-emerald-500'}`}>{full ? 'Full' : `${cap.available} left`}</span>}</button>;
+                      })}
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
