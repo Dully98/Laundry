@@ -769,11 +769,17 @@ function BookingView({ type, setView, user }) {
                 <CardContent className="p-6 space-y-4">
                   <div className="flex justify-between text-sm"><span className="text-slate-600">{isOneOff ? `One-Off (${weightKg}kg x $${ONE_OFF_RATE})` : plan?.name + ' Plan'}</span><span className="font-medium">${baseCost.toFixed(2)}</span></div>
                   {Object.entries(selectedAddons).map(([id, qty]) => { const a = ADDONS.find(x => x.id === id); return a ? <div key={id} className="flex justify-between text-sm"><span className="text-slate-600">{a.name} x{qty}</span><span className="font-medium">${(a.price * qty).toFixed(2)}</span></div> : null; })}
+                  {promoApplied && <div className="flex justify-between text-sm text-emerald-600"><span className="flex items-center gap-1"><Tag className="w-3 h-3" />{promoApplied}</span><span>-${promoDiscount.toFixed(2)}</span></div>}
                   <Separator />
                   <div className="flex justify-between text-sm"><span className="text-slate-600">Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-slate-600">GST (10%)</span><span>${gst.toFixed(2)}</span></div>
                   <Separator />
                   <div className="flex justify-between text-lg font-bold"><span>Total</span><span>${total.toFixed(2)} AUD</span></div>
+                  {/* Promo Code Input */}
+                  <div className="flex gap-2">
+                    <Input placeholder="Promo code" value={promoCode} onChange={e => setPromoCode(e.target.value)} className="text-sm h-9" disabled={!!promoApplied} />
+                    {promoApplied ? <Button size="sm" variant="ghost" onClick={() => { setPromoCode(''); setPromoDiscount(0); setPromoApplied(null); }} className="h-9 text-xs text-red-500">Remove</Button> : <Button size="sm" onClick={applyPromo} disabled={promoLoading || !promoCode.trim()} className="h-9 bg-blue-600 text-white text-xs">{promoLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Apply'}</Button>}
+                  </div>
                   <Button onClick={handleSubmit} className="w-full py-5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white" disabled={loading}>{loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}Confirm Booking</Button>
                   <div className="flex items-center justify-center gap-2 text-xs text-slate-500"><ShieldCheck className="w-3.5 h-3.5" /> Secure checkout with Stripe</div>
                 </CardContent>
