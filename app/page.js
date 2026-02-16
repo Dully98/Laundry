@@ -1136,14 +1136,20 @@ function AdminView({ user, setView }) {
   const [stats, setStats] = useState(null);
   const [orders, setOrders] = useState([]);
   const [complaints, setComplaints] = useState([]);
+  const [drivers, setDrivers] = useState([]);
+  const [promos, setPromos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
+  const [newDriver, setNewDriver] = useState({ name: '', phone: '', vehicle: '', zones: '' });
+  const [newPromo, setNewPromo] = useState({ code: '', type: 'percentage', value: '', maxUses: '', description: '' });
+
+  const CHART_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [s, o, c] = await Promise.all([api('admin/stats'), api('admin/orders'), api('admin/complaints')]);
-      setStats(s); setOrders(o.orders || []); setComplaints(c.complaints || []);
+      const [s, o, c, d, p] = await Promise.all([api('admin/stats'), api('admin/orders'), api('admin/complaints'), api('drivers'), api('promo')]);
+      setStats(s); setOrders(o.orders || []); setComplaints(c.complaints || []); setDrivers(d.drivers || []); setPromos(p.promos || []);
     } catch (e) { toast.error(e.message); }
     finally { setLoading(false); }
   };
@@ -1151,19 +1157,25 @@ function AdminView({ user, setView }) {
   useEffect(() => { loadData(); }, []);
 
   const updateOrderStatus = async (orderId, status) => {
-    try {
-      await api(`bookings/${orderId}`, { method: 'PUT', body: JSON.stringify({ status }) });
-      toast.success(`Order updated to: ${status}`);
-      loadData();
-    } catch (e) { toast.error(e.message); }
+    try { await api(`bookings/${orderId}`, { method: 'PUT', body: JSON.stringify({ status }) }); toast.success(`Status: ${status}`); loadData(); } catch (e) { toast.error(e.message); }
   };
 
   const updateComplaintStatus = async (complaintId, status, resolution) => {
-    try {
-      await api(`complaints/${complaintId}`, { method: 'PUT', body: JSON.stringify({ status, resolution }) });
-      toast.success('Complaint updated');
-      loadData();
-    } catch (e) { toast.error(e.message); }
+    try { await api(`complaints/${complaintId}`, { method: 'PUT', body: JSON.stringify({ status, resolution }) }); toast.success('Updated'); loadData(); } catch (e) { toast.error(e.message); }
+  };
+
+  const assignDriver = async (orderId, driverId) => {
+    try { await api(`drivers/assign/${orderId}`, { method: 'POST', body: JSON.stringify({ driverId }) }); toast.success('Driver assigned'); loadData(); } catch (e) { toast.error(e.message); }
+  };
+
+  const createDriver = async () => {
+    if (!newDriver.name) { toast.error('Name required'); return; }
+    try { await api('drivers', { method: 'POST', body: JSON.stringify({ ...newDriver, zones: newDriver.zones.split(',').map(z => z.trim()).filter(Boolean) }) }); toast.success('Driver added'); setNewDriver({ name: '', phone: '', vehicle: '', zones: '' }); loadData(); } catch (e) { toast.error(e.message); }
+  };
+
+  const createPromo = async () => {
+    if (!newPromo.code || !newPromo.value) { toast.error('Code and value required'); return; }
+    try { await api('promo', { method: 'POST', body: JSON.stringify(newPromo) }); toast.success('Promo created'); setNewPromo({ code: '', type: 'percentage', value: '', maxUses: '', description: '' }); loadData(); } catch (e) { toast.error(e.message); }
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center pt-20"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>;
@@ -1174,11 +1186,12 @@ function AdminView({ user, setView }) {
     <div className="min-h-screen bg-slate-50 pt-24 pb-12 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
-          <div><h1 className="text-3xl font-bold text-slate-900">Admin Panel</h1><p className="text-slate-600 mt-1">Manage orders, complaints, and operations</p></div>
+          <div><h1 className="text-3xl font-bold text-slate-900">Admin Panel</h1><p className="text-slate-600 mt-1">Manage orders, analytics, drivers, and operations</p></div>
           <Button onClick={loadData} variant="outline" className="gap-2"><RefreshCw className="w-4 h-4" /> Refresh</Button>
         </div>
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="mb-8"><TabsTrigger value="stats">Analytics</TabsTrigger><TabsTrigger value="orders">Orders</TabsTrigger><TabsTrigger value="complaints">Complaints</TabsTrigger></TabsList>
+          <TabsList className="mb-8"><TabsTrigger value="stats">Analytics</TabsTrigger><TabsTrigger value="orders">Orders</TabsTrigger><TabsTrigger value="complaints">Complaints</TabsTrigger><TabsTrigger value="drivers">Drivers</TabsTrigger><TabsTrigger value="promos">Promo Codes</TabsTrigger></TabsList>
+          
           <TabsContent value="stats">
             {stats && (
               <>
@@ -1186,36 +1199,99 @@ function AdminView({ user, setView }) {
                   {[
                     { label: 'Total Orders', val: stats.totalOrders, icon: Package, cls: 'text-blue-600' },
                     { label: 'Total Revenue', val: '$' + (stats.totalRevenue || 0).toFixed(2), icon: DollarSign, cls: 'text-emerald-600' },
-                    { label: 'Subscriptions', val: stats.activeSubscriptions, icon: CreditCard, cls: 'text-indigo-600' },
-                    { label: 'One-Off', val: stats.oneOffOrders, icon: Truck, cls: 'text-amber-600' },
                     { label: 'Users', val: stats.totalUsers, icon: Users, cls: 'text-purple-600' },
+                    { label: 'Drivers', val: stats.totalDrivers || 0, icon: Truck, cls: 'text-indigo-600' },
+                    { label: 'Promos', val: stats.activePromos || 0, icon: Tag, cls: 'text-amber-600' },
                     { label: 'Open Tickets', val: stats.openComplaints, icon: AlertTriangle, cls: 'text-red-600' },
                   ].map((s, i) => (
                     <Card key={i} className="border-0 shadow-md"><CardContent className="pt-6"><s.icon className={`w-5 h-5 mb-2 ${s.cls}`} /><p className="text-xs text-slate-500">{s.label}</p><p className="text-2xl font-bold">{s.val}</p></CardContent></Card>
                   ))}
                 </div>
-                {stats.recentOrders?.length > 0 && (
-                  <Card><CardHeader><CardTitle>Recent Orders</CardTitle></CardHeader><CardContent>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead><tr className="border-b text-left text-slate-500"><th className="pb-3">Tracking</th><th className="pb-3">Service</th><th className="pb-3">Suburb</th><th className="pb-3">Status</th><th className="pb-3">Total</th><th className="pb-3">Date</th></tr></thead>
-                        <tbody>{stats.recentOrders.map(o => (
-                          <tr key={o.id} className="border-b last:border-0">
-                            <td className="py-3 font-mono font-medium">{o.trackingId}</td>
-                            <td className="py-3">{o.planName}</td>
-                            <td className="py-3">{o.suburb}</td>
-                            <td className="py-3"><Badge variant="secondary" className="text-xs">{o.status}</Badge></td>
-                            <td className="py-3 font-medium">${o.total?.toFixed(2)}</td>
-                            <td className="py-3 text-slate-500">{new Date(o.createdAt).toLocaleDateString()}</td>
-                          </tr>
-                        ))}</tbody>
-                      </table>
+                
+                {/* Charts Row */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                  {/* Revenue Chart */}
+                  <Card><CardHeader><CardTitle className="text-base">Revenue Over Time</CardTitle></CardHeader><CardContent>
+                    {stats.monthlyRevenue?.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={250}>
+                        <BarChart data={stats.monthlyRevenue.map(m => ({ month: m._id, revenue: m.revenue, orders: m.count }))}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                          <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                          <YAxis tick={{ fontSize: 12 }} />
+                          <Tooltip formatter={(v) => [`$${v.toFixed(2)}`, 'Revenue']} />
+                          <Bar dataKey="revenue" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : <p className="text-center text-slate-400 py-12">No revenue data yet</p>}
+                  </CardContent></Card>
+                  
+                  {/* Plan Distribution Pie */}
+                  <Card><CardHeader><CardTitle className="text-base">Orders by Plan</CardTitle></CardHeader><CardContent>
+                    {stats.planDistribution?.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={250}>
+                        <PieChart>
+                          <Pie data={stats.planDistribution.map(p => ({ name: p._id, value: p.count }))} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
+                            {stats.planDistribution.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : <p className="text-center text-slate-400 py-12">No plan data yet</p>}
+                  </CardContent></Card>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                  {/* Status Breakdown */}
+                  <Card><CardHeader><CardTitle className="text-base">Orders by Status</CardTitle></CardHeader><CardContent>
+                    {stats.statusBreakdown?.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={250}>
+                        <BarChart data={stats.statusBreakdown.map(s => ({ status: s._id?.replace(/ /g, '\n') || 'Unknown', count: s.count }))} layout="vertical">
+                          <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                          <XAxis type="number" tick={{ fontSize: 11 }} />
+                          <YAxis dataKey="status" type="category" width={90} tick={{ fontSize: 10 }} />
+                          <Tooltip />
+                          <Bar dataKey="count" fill="#8B5CF6" radius={[0, 4, 4, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : <p className="text-center text-slate-400 py-12">No status data</p>}
+                  </CardContent></Card>
+                  
+                  {/* Top Suburbs */}
+                  <Card><CardHeader><CardTitle className="text-base">Top Suburbs</CardTitle></CardHeader><CardContent>
+                    {stats.suburbStats?.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={250}>
+                        <BarChart data={stats.suburbStats.map(s => ({ suburb: s._id || 'Unknown', orders: s.count }))}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                          <XAxis dataKey="suburb" tick={{ fontSize: 11 }} />
+                          <YAxis tick={{ fontSize: 12 }} />
+                          <Tooltip />
+                          <Bar dataKey="orders" fill="#10B981" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : <p className="text-center text-slate-400 py-12">No suburb data</p>}
+                  </CardContent></Card>
+                </div>
+
+                {/* Add-on Revenue */}
+                {stats.addOnRevenue?.length > 0 && (
+                  <Card className="mb-8"><CardHeader><CardTitle className="text-base">Add-On Revenue</CardTitle></CardHeader><CardContent>
+                    <div className="space-y-2">
+                      {stats.addOnRevenue.map((a, i) => (
+                        <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-slate-50">
+                          <span className="text-sm font-medium">{a._id}</span>
+                          <div className="flex items-center gap-4">
+                            <Badge variant="secondary">{a.count} sold</Badge>
+                            <span className="font-semibold text-sm">${a.revenue?.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </CardContent></Card>
                 )}
               </>
             )}
           </TabsContent>
+          
           <TabsContent value="orders">
             <div className="flex items-center gap-3 mb-6">
               <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="p-2 rounded-lg border border-slate-200 text-sm"><option value="">All Statuses</option>{TRACKING_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select>
@@ -1230,12 +1306,17 @@ function AdminView({ user, setView }) {
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-mono font-bold">{o.trackingId}</span>
                           <Badge variant={o.paymentStatus === 'paid' ? 'default' : 'secondary'} className="text-xs">{o.paymentStatus}</Badge>
+                          {o.promoCode && <Badge className="text-xs bg-emerald-100 text-emerald-700">{o.promoCode}</Badge>}
                         </div>
                         <p className="text-sm text-slate-600">{o.planName} — {o.suburb} — {o.pickupDate} @ {o.pickupTimeSlot}</p>
-                        <p className="text-sm">Items: {o.items} | Weight: {o.weightKg}kg | Total: <span className="font-semibold">${o.total?.toFixed(2)}</span></p>
-                        {o.itemsConfirmed && <p className="text-xs text-emerald-600">Items confirmed: {o.confirmedItems}</p>}
+                        <p className="text-sm">Items: {o.items} | Weight: {o.weightKg}kg | Total: <span className="font-semibold">${o.total?.toFixed(2)}</span>{o.discount > 0 && <span className="text-emerald-600 ml-1">(saved ${o.discount?.toFixed(2)})</span>}</p>
+                        {o.driverName && <p className="text-xs text-blue-600 mt-1">Driver: {o.driverName}</p>}
                       </div>
                       <div className="flex items-center gap-2">
+                        <select value={o.driverId || ''} onChange={e => assignDriver(o.id, e.target.value)} className="p-2 rounded-lg border border-slate-200 text-xs">
+                          <option value="">Assign Driver</option>
+                          {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        </select>
                         <select value={o.status} onChange={e => updateOrderStatus(o.id, e.target.value)} className="p-2 rounded-lg border border-slate-200 text-sm">
                           {TRACKING_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
@@ -1246,6 +1327,7 @@ function AdminView({ user, setView }) {
               ))}
             </div>
           </TabsContent>
+          
           <TabsContent value="complaints">
             <div className="space-y-4">
               {complaints.map(c => (
@@ -1261,6 +1343,7 @@ function AdminView({ user, setView }) {
                     </div>
                     <p className="text-sm text-slate-700 mb-2">{c.description}</p>
                     <p className="text-xs text-slate-500">From: {c.userName} ({c.userEmail})</p>
+                    {c.photos?.length > 0 && <div className="flex gap-2 mt-2">{c.photos.map((p, i) => <img key={i} src={p} alt="Evidence" className="w-20 h-20 object-cover rounded-lg border" />)}</div>}
                     {c.status === 'open' && (
                       <div className="flex gap-2 mt-3">
                         <Button size="sm" onClick={() => { const res = prompt('Enter resolution:'); if (res) updateComplaintStatus(c.id, 'resolved', res); }}>Resolve</Button>
@@ -1272,6 +1355,70 @@ function AdminView({ user, setView }) {
                 </Card>
               ))}
               {complaints.length === 0 && <p className="text-center text-slate-500 py-8">No complaints. Great work!</p>}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="drivers">
+            <Card className="mb-6"><CardHeader><CardTitle className="text-lg">Add Driver</CardTitle></CardHeader><CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <Input placeholder="Name *" value={newDriver.name} onChange={e => setNewDriver({...newDriver, name: e.target.value})} />
+                <Input placeholder="Phone" value={newDriver.phone} onChange={e => setNewDriver({...newDriver, phone: e.target.value})} />
+                <Input placeholder="Vehicle" value={newDriver.vehicle} onChange={e => setNewDriver({...newDriver, vehicle: e.target.value})} />
+                <Input placeholder="Zones (comma sep)" value={newDriver.zones} onChange={e => setNewDriver({...newDriver, zones: e.target.value})} />
+              </div>
+              <Button onClick={createDriver} className="mt-3 bg-blue-600 text-white"><Plus className="w-4 h-4 mr-1" /> Add Driver</Button>
+            </CardContent></Card>
+            <div className="space-y-3">
+              {drivers.map(d => (
+                <Card key={d.id}><CardContent className="p-4 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium flex items-center gap-2"><UserCheck className="w-4 h-4 text-blue-600" />{d.name} <Badge variant={d.status === 'active' ? 'default' : 'secondary'} className="text-xs">{d.status}</Badge></p>
+                    <p className="text-sm text-slate-500">{d.phone} | {d.vehicle}</p>
+                    <div className="flex gap-1 mt-1">{d.assignedZones?.map(z => <Badge key={z} variant="secondary" className="text-xs">{z}</Badge>)}</div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm"><span className="font-semibold">{d.currentOrders}</span> active</p>
+                    <p className="text-xs text-slate-500">{d.totalDeliveries} total</p>
+                    <Button size="sm" variant="outline" className="mt-1 text-xs" onClick={async () => {
+                      const newStatus = d.status === 'active' ? 'inactive' : 'active';
+                      await api(`drivers/${d.id}`, { method: 'PUT', body: JSON.stringify({ status: newStatus }) });
+                      toast.success(`Driver ${newStatus}`); loadData();
+                    }}>{d.status === 'active' ? 'Deactivate' : 'Activate'}</Button>
+                  </div>
+                </CardContent></Card>
+              ))}
+              {drivers.length === 0 && <p className="text-center text-slate-500 py-8">No drivers added yet.</p>}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="promos">
+            <Card className="mb-6"><CardHeader><CardTitle className="text-lg">Create Promo Code</CardTitle></CardHeader><CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                <Input placeholder="Code *" value={newPromo.code} onChange={e => setNewPromo({...newPromo, code: e.target.value.toUpperCase()})} />
+                <select value={newPromo.type} onChange={e => setNewPromo({...newPromo, type: e.target.value})} className="p-2 rounded-lg border border-slate-200 text-sm"><option value="percentage">Percentage (%)</option><option value="fixed">Fixed ($)</option></select>
+                <Input placeholder="Value *" type="number" value={newPromo.value} onChange={e => setNewPromo({...newPromo, value: e.target.value})} />
+                <Input placeholder="Max Uses" type="number" value={newPromo.maxUses} onChange={e => setNewPromo({...newPromo, maxUses: e.target.value})} />
+                <Input placeholder="Description" value={newPromo.description} onChange={e => setNewPromo({...newPromo, description: e.target.value})} />
+              </div>
+              <Button onClick={createPromo} className="mt-3 bg-blue-600 text-white"><Plus className="w-4 h-4 mr-1" /> Create Code</Button>
+            </CardContent></Card>
+            <div className="space-y-3">
+              {promos.map(p => (
+                <Card key={p.id}><CardContent className="p-4 flex items-center justify-between">
+                  <div>
+                    <p className="font-mono font-bold flex items-center gap-2"><Tag className="w-4 h-4 text-amber-600" />{p.code} <Badge variant={p.active ? 'default' : 'secondary'} className="text-xs">{p.active ? 'Active' : 'Inactive'}</Badge></p>
+                    <p className="text-sm text-slate-500">{p.type === 'percentage' ? `${p.value}% off` : `$${p.value} off`} {p.description && `— ${p.description}`}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm">{p.currentUses}/{p.maxUses || '∞'} uses</p>
+                    <Button size="sm" variant="outline" className="mt-1 text-xs" onClick={async () => {
+                      await api(`promo/${p.id}`, { method: 'PUT' });
+                      toast.success(p.active ? 'Deactivated' : 'Activated'); loadData();
+                    }}>{p.active ? 'Deactivate' : 'Activate'}</Button>
+                  </div>
+                </CardContent></Card>
+              ))}
+              {promos.length === 0 && <p className="text-center text-slate-500 py-8">No promo codes yet.</p>}
             </div>
           </TabsContent>
         </Tabs>
