@@ -851,6 +851,34 @@ async function handler(request, context) {
     if (p === 'admin/complaints' && method === 'GET') return handleGetComplaints(request);
     if (pathArr[0] === 'admin' && pathArr[1] === 'complaints' && pathArr.length === 3 && method === 'PUT') return handleUpdateComplaint(request, pathArr[2]);
 
+    // Invoices
+    if (pathArr[0] === 'invoices' && pathArr.length === 2 && method === 'GET') return handleGetInvoice(request, pathArr[1]);
+
+    // Promo Codes
+    if (p === 'promo' && method === 'POST') return handleCreatePromo(request);
+    if (p === 'promo/validate' && method === 'POST') return handleValidatePromo(request);
+    if (p === 'promo' && method === 'GET') return handleGetPromos(request);
+    if (pathArr[0] === 'promo' && pathArr.length === 2 && method === 'PUT') return handleTogglePromo(request, pathArr[1]);
+
+    // Drivers
+    if (p === 'drivers' && method === 'POST') return handleCreateDriver(request);
+    if (p === 'drivers' && method === 'GET') return handleGetDrivers(request);
+    if (pathArr[0] === 'drivers' && pathArr.length === 2 && method === 'PUT') return handleUpdateDriver(request, pathArr[1]);
+    if (pathArr[0] === 'drivers' && pathArr[1] === 'assign' && pathArr.length === 3 && method === 'POST') return handleAssignDriver(request, pathArr[2]);
+
+    // Capacity
+    if (p === 'capacity' && method === 'GET') return handleGetCapacity(request);
+    if (p === 'capacity' && method === 'PUT') return handleSetCapacity(request);
+
+    // Stripe Webhook
+    if (p === 'webhook/stripe' && method === 'POST') return handleStripeWebhook(request);
+
+    // Notifications
+    if (p === 'notifications' && method === 'GET') return handleGetNotifications(request);
+
+    // Referral
+    if (p === 'referral' && method === 'GET') return handleGetReferralCode(request);
+
     return json({ error: 'Not found', path: p }, 404);
   } catch (error) {
     console.error('API Error:', error);
