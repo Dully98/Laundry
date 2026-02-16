@@ -1689,6 +1689,7 @@ export default function App() {
           <TestimonialsSection />
           <ServiceAreaSection />
           <CorporateSection setView={navigate} />
+          <InstantSupportSection />
           <FAQSection />
           <FinalCTA setView={navigate} />
           <Footer setView={navigate} />
